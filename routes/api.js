@@ -11,45 +11,36 @@
 const expect = require('chai').expect;
 const ObjectID = require('mongodb').ObjectID;
 
-function inputsToDatabaseObject(inputs) {
-  const DBObj = {};
+function validateInputs(req, res, next) {
+  // Checks all user inputs and returns appropriate errors if any are invalid
   
-  for (let key in inputs) {
-    switch (key) {
-      case '_id':
-        if (isValidIdString(inputs[key])) {
-          DBObj[key] = ObjectID(inputs[key])
-          break;
-        } 
-        
-        return new Error('invalid _id');
-      case 'title':
-        if (inputs[key] && inputs[key] !== '') {
-          DBObj[key] = sanitizeInputs(inputs[key]);
-          break;
-        }
-        
-        return new Error('missing title');
-      default:
-        DBObj[key] = sanitizeInputs(inputs[key]);
+  const inputSets = [req.query, req.body, req.params];
+  
+  for (let inputs of inputSets) {
+    for (let key in inputs) {
+      switch (key) {
+        case '_id':
+        case 'id':
+          if (!ObjectID.isValid(inputs[key])) {
+            return res.send('invalid _id');
+            break;
+          } 
+        case 'title':
+          if (req.method !== 'DELETE' && inputs[key] === '') {
+            return res.send('missing title');
+            break;
+          }
+      }
     }
   }
   
-  return DBObj;
+  next();
 }
 
-function isValidIdString(string) {
-  // Determine if an input string can be converted to a valid mongodb.ObjectID
+function sanitize(input) {
+  // Strip out '<' and '>' characters to prevent HTML injection.
   
-  try {
-    return ObjectID(string) instanceof ObjectID;
-  } catch(err) {
-    return false;
-  }
-}
-
-function sanitizeInputs(inputs) {
-  return inputs        
+  return input      
     .replace(/\</gm, '&lt')
     .replace(/\>/gm, '&gt');
 }
@@ -57,44 +48,18 @@ function sanitizeInputs(inputs) {
 module.exports = (app, db) => {
 
   app.route('/api/books')
-  
-    .all((req, res, next) => {
-      let inputs;
-    
-      if (Object.keys(req.body).length > 0) {
-        inputs = req.body;
-      } else {
-        inputs = req.query;
-      }
-      
-      const databaseObj = inputsToDatabaseObject(inputs);
-    
-      if (databaseObj instanceof Error) {
-        return res.send(databaseObj.message);
-      }
-    
-      req.databaseObj = databaseObj;
-      next();
-    })
+    .all(validateInputs)
   
     .get((req, res) => {
-      const query = req.databaseObj;
-    
-      db.collection('books').find(query).toArray()
+      db.collection('books').find({}).toArray()
         .then(result => {
-          if (result.length === 0) {
-            return res.send('no book exists');
-          } else if (Object.keys(query).length === 0) {
-            return res.json(result.map(obj => {
-              return {
-                _id: obj._id,
-                title: obj.title,
-                commentcount: obj.comments.length
-              };
-            }));
-          } else {
-            return res.json(result[0]);
-          }
+          return res.json(result.map(obj => {
+            return {
+              _id: obj._id,
+              title: obj.title,
+              commentcount: obj.comments.length
+            };
+          }));
         })
         .catch(err => {
           console.error(err);
@@ -103,9 +68,10 @@ module.exports = (app, db) => {
     })
     
     .post((req, res) => {
-      const document = req.databaseObj;
-    
-      document.comments = [];
+      const document = {
+        title: sanitize(req.body.title),
+        comments: []
+      };
     
       db.collection('books').insertOne(document)
         .then(result => res.json(result.ops[0]))
@@ -115,30 +81,75 @@ module.exports = (app, db) => {
         });
     })
     
-    .delete((req, res) => {
-      //if successful response will be 'complete delete successful'
-      const deleteQuery = req.databaseObj;
-    
-      console.log(deleteQuery);
+    .delete((req, res) => {    
+      db.collection('books').deleteMany({})
+        .then(result => {
+          if (result.deletedCount === 0) {
+            res.send('no books found to delete');
+          } else {
+            res.send('complete delete successful');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          res.send('Delete failed');
+        });
     });
 
 
-
   app.route('/api/books/:id')
+    .all(validateInputs)
+  
     .get((req, res) => {
-      const bookid = req.params.id;
-      //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
+      const filter = { _id: ObjectID(req.params.id) };
+    
+      db.collection('books').findOne(filter)
+        .then(result => {
+          if (result) {
+            return res.json(result);
+          }
+        
+          res.send('no book exists');
+        })
+        .catch(err => {
+          console.error(err);
+          res.send('error finding book');
+        });
     })
     
     .post((req, res) => {
-      const bookid = req.params.id;
-      const comment = req.body.comment;
-      //json res format same as .get
+      const filter = { _id: ObjectID(req.params.id) };
+      const comment = sanitize(req.body.comment);
+    
+      db.collection('books').findOneAndUpdate(filter, {$push: { comments: comment } }, { returnOriginal: false })
+        .then(result => {
+          if (result.lastErrorObject.updatedExisting) {
+              res.json(result.value);
+            } else {
+              res.send('could not add comment');
+            }
+        })
+        .catch(err => {
+          console.error(err);
+          res.send('error adding comment');
+        });
     })
     
     .delete((req, res) => {
-      const bookid = req.params.id;
-      //if successful response will be 'delete successful'
+      const bookid = ObjectID(req.params.id);
+    
+      db.collection('books').deleteOne({ _id: bookid })
+        .then(result => {
+          if (result.deletedCount > 0) {
+            return res.send('delete successful');
+          }
+        
+          res.send(`could not delete book with _id ${bookid}`);
+        })
+        .catch(err => {
+          console.error(err);
+          res.send('Error deleting book');
+        });
     });
   
 };

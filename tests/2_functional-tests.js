@@ -50,6 +50,7 @@ suite('Functional Tests', () => {
             assert.isObject(res.body, 'response should be an object');
             assert.property(res.body, '_id', 'Object should have an _id');
             assert.property(res.body, 'title', 'Object should have a title');
+            assert.equal(res.body.title, title, 'Title should equal input title');
             assert.property(res.body, 'comments', 'Object should have a "comments" property');
             assert.isArray(res.body.comments, 'The comments property should be an array');
             assert.lengthOf(res.body.comments, 0, 'The comments array should have a length of 0');
@@ -92,8 +93,7 @@ suite('Functional Tests', () => {
       
       test('Test GET /api/books/[id] with id not in db', (done) => {
         chai.request(server)
-          .get('/api/books')
-          .query({ _id: '5c4f9fe37389b3006d148114' })
+          .get('/api/books/5c4f9fe37389b3006d148114')
           .end((err, res) => {
             assert.equal(res.status, 200);
             assert.equal(res.text, 'no book exists');
@@ -102,14 +102,16 @@ suite('Functional Tests', () => {
       });
       
       test('Test GET /api/books/[id] with valid id in db', (done) => {
+        const id = '5c5160cbeaf975188010a256';
+        
         chai.request(server)
-          .get('/api/books')
-          .query({ _id: '5c4fbd618eaf5f6d11f67539' })
+          .get(`/api/books/${id}`)
           .end((err, res) => {
             assert.equal(res.status, 200);
             assert.isObject(res.body, 'Response should be an object');
-            assert.property(res.body, '_id', 'Response should have an _id');
-            assert.property(res.body, 'title', 'Response should have a title');
+            assert.property(res.body, '_id', 'Response should have an "_id" property');
+            assert.equal(res.body._id, id, '_id of response should match the _id that was searched for');
+            assert.property(res.body, 'title', 'Response should have a "title" property');
             assert.property(res.body, 'comments', 'Response should have a comments property');
             assert.isArray(res.body.comments, '"comments" should be an array');
             done();
@@ -122,7 +124,23 @@ suite('Functional Tests', () => {
     suite('POST /api/books/[id] => add comment/expect book object with id', () => {
       
       test('Test POST /api/books/[id] with comment', (done) => {
-        //done();
+        const id = '5c5160cbeaf975188010a256';
+        const comment = 'POST /api/bookd/[id] comment';
+        
+        chai.request(server)
+          .post(`/api/books/${id}`)
+          .send({ comment })
+          .end((err, res) => {
+            assert.equal(res.status, 200);
+            assert.isObject(res.body, 'Response should be an object');
+            assert.property(res.body, '_id', 'Response should have an "_id" property');
+            assert.equal(res.body._id, id, '_id of response should match the _id that was entered');
+            assert.property(res.body, 'title', 'Response should have a "title" property');
+            assert.property(res.body, 'comments', 'Response should have a "comments" property');
+            assert.isArray(res.body.comments, '"comments" property should be an array');
+            assert.include(res.body.comments, comment, '"cooments" array should include the comment that was posted');
+            done();
+          });
       });
       
     });
