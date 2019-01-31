@@ -8,7 +8,6 @@
 
 'use strict';
 
-const expect = require('chai').expect;
 const ObjectID = require('mongodb').ObjectID;
 
 function validateInputs(req, res, next) {
@@ -44,6 +43,7 @@ function sanitize(input) {
     .replace(/\</gm, '&lt')
     .replace(/\>/gm, '&gt');
 }
+
 
 module.exports = (app, db) => {
 

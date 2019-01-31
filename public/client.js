@@ -57,20 +57,23 @@ $( document ).ready(function() {
       }
     });
   });
-  
-  $('#newBook').click(function() {
+
+  $('#newBook').click(function(e) {
     $.ajax({
       url: '/api/books',
       type: 'post',
       dataType: 'json',
       data: $('#newBookForm').serialize(),
       success: function(data) {
-        //update list
+        itemsRaw.push(data);
+        items.push('<li class="bookItem" id=' + items.length + '>' + data.title + ' - ' + data.comments.length + ' comments</li>');
+        $('.listWrapper').html(items.join(''));
       }
     });
+    e.preventDefault();
   });
   
-  $('#deleteAllBooks').click(function() {
+  $('#deleteAllBooks').click(function(e) {
     $.ajax({
       url: '/api/books',
       type: 'delete',
@@ -80,6 +83,7 @@ $( document ).ready(function() {
         //update list
       }
     });
+    e.preventDefault();
   }); 
   
 });
