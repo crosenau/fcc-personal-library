@@ -57,8 +57,8 @@ $( document ).ready(function() {
       }
     });
   });
-  
-  $('#newBook').click(function() {
+
+  $('#newBook').click(function(e) {
     $.ajax({
       url: '/api/books',
       type: 'post',
@@ -66,11 +66,18 @@ $( document ).ready(function() {
       data: $('#newBookForm').serialize(),
       success: function(data) {
         //update list
+        //console.log(data);
+        console.log(itemsRaw);
+        itemsRaw.push(data);
+        items.push('<li class="bookItem" id=' + items.length + '>' + data.title + ' - ' + data.comments.length + ' comments</li>');
+        //console.log($('.listWrapper').html);
+        $('.listWrapper').html(items.join(''));
       }
     });
+    e.preventDefault();
   });
   
-  $('#deleteAllBooks').click(function() {
+  $('#deleteAllBooks').click(function(e) {
     $.ajax({
       url: '/api/books',
       type: 'delete',
@@ -80,6 +87,7 @@ $( document ).ready(function() {
         //update list
       }
     });
+    e.preventDefault();
   }); 
   
 });

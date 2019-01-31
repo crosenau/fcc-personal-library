@@ -102,7 +102,7 @@ suite('Functional Tests', () => {
       });
       
       test('Test GET /api/books/[id] with valid id in db', (done) => {
-        const id = '5c5160cbeaf975188010a256';
+        const id = '5c52502c18d9ae0af5386000';
         
         chai.request(server)
           .get(`/api/books/${id}`)
@@ -124,7 +124,7 @@ suite('Functional Tests', () => {
     suite('POST /api/books/[id] => add comment/expect book object with id', () => {
       
       test('Test POST /api/books/[id] with comment', (done) => {
-        const id = '5c5160cbeaf975188010a256';
+        const id = '5c52502c18d9ae0af5386000';
         const comment = 'POST /api/bookd/[id] comment';
         
         chai.request(server)
