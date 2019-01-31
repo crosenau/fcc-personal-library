@@ -65,12 +65,8 @@ $( document ).ready(function() {
       dataType: 'json',
       data: $('#newBookForm').serialize(),
       success: function(data) {
-        //update list
-        //console.log(data);
-        console.log(itemsRaw);
         itemsRaw.push(data);
         items.push('<li class="bookItem" id=' + items.length + '>' + data.title + ' - ' + data.comments.length + ' comments</li>');
-        //console.log($('.listWrapper').html);
         $('.listWrapper').html(items.join(''));
       }
     });
